@@ -1,4 +1,4 @@
-# PAPERTail
+# Paper Tail
 
 An agentic RAG system that researches scientific papers — not one-shot
 top-K retrieval. The agent plans searches, picks retrieval methods per
@@ -119,6 +119,27 @@ without a backend running, but it's not talking to your real papers.
    verified its own claims.
 3. **Sidebar** — papers are grouped by the keyword search that found them.
    Click any paper to open its real PDF in the right-hand panel.
+
+## Screenshots
+
+**Add Papers** — type a topic, watch the real ingestion pipeline run live:
+
+<img src="screenshots/add-papers-form.png" width="420" alt="Add Papers panel with a topic typed in, ready to submit">
+<img src="screenshots/add-papers-pipeline.png" width="420" alt="Add Papers panel mid-run, showing live search/download progress">
+
+**Chat** — every answer comes with the real agent trace, not just the final text:
+
+<img src="screenshots/chat-empty-state.png" width="600" alt="Chat empty state with suggested prompts">
+<img src="screenshots/chat-thought-process.png" width="600" alt="Chat answer with citation pills and a collapsible Thought process trace">
+<img src="screenshots/thought-process-detail.png" width="420" alt="Expanded Thought process trace across multiple planner/retrieve/evaluate iterations">
+
+**PDF panel** — click any paper (in the sidebar or a citation pill) to read its real PDF alongside the chat:
+
+<img src="screenshots/pdf-viewer-panel.png" width="700" alt="Real arXiv PDF open in the right-hand panel next to the chat">
+
+**Errors surface honestly, not silently** — e.g. hitting an endpoint before it existed yet during development:
+
+<img src="screenshots/add-papers-error-example.png" width="420" alt="Add Papers panel showing a real ingest error message">
 
 ## Troubleshooting
 
