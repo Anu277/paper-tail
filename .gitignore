@@ -21,6 +21,8 @@ frontend/.output/
 frontend/.vinxi/
 frontend/.tanstack/
 frontend/.nitro/
+frontend/.netlify/
+frontend/.wrangler/
 frontend/.env
 *.local
 
