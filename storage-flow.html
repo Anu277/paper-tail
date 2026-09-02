@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chunk Storage Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#f2f4f8; --surface:#ffffff; --surface-2:#e8ecf3;
+    --border:#c5cbdb; --border-strong:#8c93ab;
+    --text:#171b26; --text-muted:#5b6377;
+    --accent:#0e7c8c; --accent-soft:#0e7c8c14;
+    --data:#1f8a4c; --data-soft:#1f8a4c14; --data-border:#2fa864;
+    --mono-line:#3a4258;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1320; --surface:#161c2b; --surface-2:#1d2436;
+      --border:#2a3350; --border-strong:#4a5578;
+      --text:#e7eaf3; --text-muted:#98a1ba;
+      --accent:#4fd6df; --accent-soft:#4fd6df14;
+      --data:#57d68f; --data-soft:#57d68f14; --data-border:#3fae70;
+      --mono-line:#c7cee0;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1320; --surface:#161c2b; --surface-2:#1d2436;
+    --border:#2a3350; --border-strong:#4a5578;
+    --text:#e7eaf3; --text-muted:#98a1ba;
+    --accent:#4fd6df; --accent-soft:#4fd6df14;
+    --data:#57d68f; --data-soft:#57d68f14; --data-border:#3fae70;
+    --mono-line:#c7cee0;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:"IBM Plex Sans",sans-serif; -webkit-font-smoothing:antialiased; }
+  .page{ max-width:1100px; margin:0 auto; padding:56px 28px 90px; }
+  .eyebrow{ font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin:0 0 12px; }
+  h1{ font-size:clamp(26px,4vw,36px); font-weight:700; margin:0 0 14px; }
+  .lede{ font-size:16px; line-height:1.6; color:var(--text-muted); max-width:74ch; margin:0 0 8px; }
+  .lede code{ font-family:"IBM Plex Mono",monospace; font-size:.9em; background:var(--surface-2); padding:1px 5px; border-radius:4px; color:var(--text); }
+  figure{ margin:48px 0 0; }
+  .fig-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; }
+  figure h2{ font-size:18px; font-weight:600; margin:0; }
+  .fig-num{ font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--text-muted); }
+  .diagram-frame{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; overflow-x:auto; }
+  .diagram-frame svg{ display:block; width:100%; height:auto; min-width:640px; }
+  figcaption{ margin-top:14px; font-size:13.5px; line-height:1.6; color:var(--text-muted); max-width:80ch; }
+  figcaption code{ font-family:"IBM Plex Mono",monospace; font-size:.9em; background:var(--surface-2); padding:1px 5px; border-radius:4px; color:var(--text); }
+
+  svg text{ font-family:"IBM Plex Sans",sans-serif; fill:var(--text); }
+  svg .mono{ font-family:"IBM Plex Mono",monospace; }
+  svg .title{ font-weight:600; }
+  svg .sub{ fill:var(--text-muted); }
+  svg .box{ fill:var(--surface); stroke:var(--border-strong); stroke-width:1.5; }
+  svg .box-soft{ fill:var(--surface-2); stroke:var(--border); stroke-width:1.5; }
+  svg .box-accent{ fill:var(--accent-soft); stroke:var(--accent); stroke-width:2; }
+  svg .box-data{ fill:var(--data-soft); stroke:var(--data-border); stroke-width:2; }
+  svg .edge{ fill:none; stroke:var(--mono-line); stroke-width:1.5; }
+  svg .edge-dashed{ fill:none; stroke:var(--mono-line); stroke-width:1.3; stroke-dasharray:4 4; }
+  svg .label{ font-family:"IBM Plex Mono",monospace; font-size:10.5px; fill:var(--text-muted); }
+  svg .container-label{ font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.05em; fill:var(--accent); font-weight:600; }
+  svg .box-container{ fill:none; stroke:var(--border); stroke-width:1.5; stroke-dasharray:4 4; }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">How chunks actually get stored</p>
+  <h1>Chunk Storage Flow</h1>
+  <p class="lede">
+    Two separate moments: building the index (once, offline) and querying it
+    (every time the agent retrieves). The whole answer to "how does it know
+    which paragraph is from which paper" lives in the build step — nothing
+    figures it out afterward, it's tagged before the text ever gets embedded.
+  </p>
+
+  <!-- ============ DIAGRAM 1: BUILD TIME ============ -->
+  <figure>
+    <div class="fig-head">
+      <h2>Building the index — scripts/build_index.py</h2>
+      <span class="fig-num">FIG. 01</span>
+    </div>
+    <div class="diagram-frame">
+<svg viewBox="0 0 1040 960" role="img" aria-label="For each PDF, its filename becomes the paper_id before chunking. Every chunk produced from that PDF is appended to a texts list and tagged with that same paper_id in a parallel metadatas list, at the same list position. The texts get embedded into vectors in that same order, then FAISS.__add zips ids, texts, and metadatas together by position into Document objects, splitting the result into two separate stores: the FAISS index, which holds only numeric vectors, and the docstore, a dictionary holding the actual text and metadata, linked back to the FAISS index by an index_to_docstore_id position map.">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--mono-line)"></path>
+    </marker>
+  </defs>
+
+  <rect class="box" x="420" y="20" width="200" height="55" rx="6"></rect>
+  <text x="520" y="45" text-anchor="middle" class="title mono" font-size="12">PDF (one paper)</text>
+  <text x="520" y="63" text-anchor="middle" class="sub mono" font-size="10.5">2406.03790.pdf</text>
+  <path class="edge" d="M520,75 L520,105" marker-end="url(#a1)"></path>
+
+  <rect class="box-data" x="320" y="105" width="400" height="45" rx="6"></rect>
+  <text x="520" y="132" text-anchor="middle" class="title mono" font-size="11.5">paper_id = pdf_path.stem  →  "2406.03790"</text>
+  <path class="edge" d="M520,150 L520,180" marker-end="url(#a1)"></path>
+
+  <rect class="box" x="300" y="180" width="440" height="45" rx="6"></rect>
+  <text x="520" y="207" text-anchor="middle" class="title mono" font-size="11.5">chunk_text(extract_text(pdf))  →  chunks[0..N]</text>
+  <path class="edge" d="M520,225 L520,250" marker-end="url(#a1)"></path>
+
+  <text x="60" y="266" class="label">for i, chunk in enumerate(chunks):  — same paper_id every time through this loop</text>
+
+  <rect class="box-container" x="30" y="278" width="980" height="180" rx="8"></rect>
+  <text x="46" y="298" class="container-label">PARALLEL LISTS — built together, position i always matches</text>
+
+  <text x="46" y="330" class="label mono">texts[]</text>
+  <rect class="box-soft" x="120" y="312" width="150" height="40" rx="5"></rect>
+  <text x="195" y="337" text-anchor="middle" class="mono" font-size="10.5">"...we evaluate..."</text>
+  <rect class="box-soft" x="290" y="312" width="150" height="40" rx="5"></rect>
+  <text x="365" y="337" text-anchor="middle" class="mono" font-size="10.5">"...the results..."</text>
+  <rect class="box-soft" x="460" y="312" width="150" height="40" rx="5"></rect>
+  <text x="535" y="337" text-anchor="middle" class="mono" font-size="10.5">"...in Table 3..."</text>
+  <text x="650" y="337" class="sub mono" font-size="13">...</text>
+
+  <path class="edge-dashed" d="M195,352 L195,378"></path>
+  <path class="edge-dashed" d="M365,352 L365,378"></path>
+  <path class="edge-dashed" d="M535,352 L535,378"></path>
+  <text x="680" y="368" class="label">↕ same index i</text>
+
+  <text x="30" y="410" class="label mono">metadatas[]</text>
+  <rect class="box-soft" x="120" y="392" width="150" height="46" rx="5"></rect>
+  <text x="195" y="410" text-anchor="middle" class="mono" font-size="9.5">paper_id: 2406.03790</text>
+  <text x="195" y="424" text-anchor="middle" class="mono" font-size="9.5">chunk_id: 2406.03790-0</text>
+  <rect class="box-soft" x="290" y="392" width="150" height="46" rx="5"></rect>
+  <text x="365" y="410" text-anchor="middle" class="mono" font-size="9.5">paper_id: 2406.03790</text>
+  <text x="365" y="424" text-anchor="middle" class="mono" font-size="9.5">chunk_id: 2406.03790-1</text>
+  <rect class="box-soft" x="460" y="392" width="150" height="46" rx="5"></rect>
+  <text x="535" y="410" text-anchor="middle" class="mono" font-size="9.5">paper_id: 2406.03790</text>
+  <text x="535" y="424" text-anchor="middle" class="mono" font-size="9.5">chunk_id: 2406.03790-2</text>
+
+  <path class="edge" d="M520,458 L520,485" marker-end="url(#a1)"></path>
+
+  <rect class="box" x="300" y="485" width="440" height="45" rx="6"></rect>
+  <text x="520" y="512" text-anchor="middle" class="title mono" font-size="11.5">embedding.embed_documents(texts)  →  vectors[]</text>
+  <path class="edge" d="M520,530 L520,555" marker-end="url(#a1)"></path>
+
+  <rect class="box-accent" x="260" y="555" width="520" height="55" rx="6"></rect>
+  <text x="520" y="580" text-anchor="middle" class="title mono" font-size="11.5">FAISS.__add(): zip(ids, texts, metadatas)</text>
+  <text x="520" y="598" text-anchor="middle" class="sub mono" font-size="10">bundles by position into Document(text, metadata) objects</text>
+
+  <path class="edge" d="M420,610 L200,640" marker-end="url(#a1)"></path>
+  <path class="edge" d="M620,610 L840,640" marker-end="url(#a1)"></path>
+
+  <rect class="box" x="40" y="640" width="400" height="150" rx="8"></rect>
+  <text x="240" y="666" text-anchor="middle" class="title mono" font-size="12">FAISS INDEX (IndexFlatL2)</text>
+  <text x="240" y="686" text-anchor="middle" class="sub mono" font-size="10">numbers only — no text, no metadata</text>
+  <text x="60" y="710" class="mono sub" font-size="10">pos 0 → [0.12, -0.03, 0.44, ...]</text>
+  <text x="60" y="728" class="mono sub" font-size="10">pos 1 → [-0.09, 0.21, 0.03, ...]</text>
+  <text x="60" y="746" class="mono sub" font-size="10">pos 2 → [0.31, -0.15, 0.08, ...]</text>
+  <text x="60" y="768" class="sub" font-size="10.5">384 numbers per chunk, same order as texts[]</text>
+
+  <rect class="box-data" x="600" y="640" width="400" height="150" rx="8"></rect>
+  <text x="800" y="666" text-anchor="middle" class="title mono" font-size="12">DOCSTORE (python dict)</text>
+  <text x="800" y="686" text-anchor="middle" class="sub mono" font-size="10">text + metadata — no vectors</text>
+  <text x="618" y="712" class="mono" font-size="9.5">90f16e13-... → Document(</text>
+  <text x="636" y="728" class="mono" font-size="9.5">text="...we evaluate...",</text>
+  <text x="636" y="744" class="mono" font-size="9.5">metadata={paper_id: "2406.03790",</text>
+  <text x="654" y="758" class="mono" font-size="9.5">chunk_id: "2406.03790-0"})</text>
+
+  <path class="edge" d="M240,790 L240,830 L800,830 L800,790" ></path>
+  <rect class="box-container" x="220" y="830" width="600" height="50" rx="6"></rect>
+  <text x="520" y="860" text-anchor="middle" class="container-label" font-size="11">index_to_docstore_id = {0: "90f16e13-...", 1: "...", 2: "..."}</text>
+  <text x="520" y="905" text-anchor="middle" class="sub" font-size="11.5">the only link between the two stores — position → docstore key</text>
+</svg>
+    </div>
+    <figcaption>
+      The attribution isn't figured out later — it's stamped on at the moment
+      each chunk is created, while we're still inside the loop for that one
+      PDF. <code>texts</code> and <code>metadatas</code> grow together, one
+      append each per chunk, so position <code>i</code> in one always means
+      position <code>i</code> in the other. Everything downstream — the
+      embedding, the FAISS index, the docstore — just preserves that same
+      ordering; nothing re-derives which paper a chunk came from.
+    </figcaption>
+  </figure>
+
+  <!-- ============ DIAGRAM 2: QUERY TIME ============ -->
+  <figure>
+    <div class="fig-head">
+      <h2>Querying the index — app/retrieval/semantic.py</h2>
+      <span class="fig-num">FIG. 02</span>
+    </div>
+    <div class="diagram-frame">
+<svg viewBox="0 0 1040 640" role="img" aria-label="A query is embedded into a vector, FAISS searches its numeric index and returns the nearest vector positions as plain integers with no text attached, those positions are translated through index_to_docstore_id into docstore keys, the docstore is looked up to retrieve the actual Document with its text and metadata, and only then is an Evidence object with paper_id, chunk_id, text, and source assembled and returned to the caller.">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--mono-line)"></path>
+    </marker>
+  </defs>
+
+  <rect class="box" x="360" y="20" width="320" height="50" rx="6"></rect>
+  <text x="520" y="50" text-anchor="middle" class="title mono" font-size="11.5">query = "chunking strategies for academic papers"</text>
+  <path class="edge" d="M520,70 L520,95" marker-end="url(#a2)"></path>
+
+  <rect class="box" x="360" y="95" width="320" height="45" rx="6"></rect>
+  <text x="520" y="122" text-anchor="middle" class="title mono" font-size="11.5">embedding.embed_query(query)</text>
+  <path class="edge" d="M520,140 L520,165" marker-end="url(#a2)"></path>
+
+  <rect class="box-soft" x="380" y="165" width="280" height="45" rx="6"></rect>
+  <text x="520" y="192" text-anchor="middle" class="mono" font-size="11">query_vector — 384 numbers</text>
+  <path class="edge" d="M520,210 L520,235" marker-end="url(#a2)"></path>
+
+  <rect class="box-accent" x="320" y="235" width="400" height="55" rx="6"></rect>
+  <text x="520" y="260" text-anchor="middle" class="title mono" font-size="11.5">FAISS index.search(query_vector, k=3)</text>
+  <text x="520" y="278" text-anchor="middle" class="sub mono" font-size="10">pure number-crunching — no text involved yet</text>
+  <path class="edge" d="M520,290 L520,315" marker-end="url(#a2)"></path>
+
+  <rect class="box" x="340" y="315" width="360" height="45" rx="6"></rect>
+  <text x="520" y="342" text-anchor="middle" class="mono" font-size="11.5">nearest positions: [90, 5, 12]  ← just integers</text>
+  <path class="edge" d="M520,360 L520,385" marker-end="url(#a2)"></path>
+
+  <rect class="box" x="300" y="385" width="440" height="45" rx="6"></rect>
+  <text x="520" y="412" text-anchor="middle" class="mono" font-size="11">index_to_docstore_id[90] → "90f16e13-..."</text>
+  <path class="edge" d="M520,430 L520,455" marker-end="url(#a2)"></path>
+
+  <rect class="box-data" x="220" y="455" width="600" height="60" rx="6"></rect>
+  <text x="520" y="480" text-anchor="middle" class="title mono" font-size="11.5">docstore["90f16e13-..."] → Document(text, metadata)</text>
+  <text x="520" y="500" text-anchor="middle" class="sub mono" font-size="10">this is the moment paper_id and chunk_id come back into the picture</text>
+  <path class="edge" d="M520,515 L520,540" marker-end="url(#a2)"></path>
+
+  <rect class="box-data" x="260" y="540" width="520" height="80" rx="8"></rect>
+  <text x="520" y="565" text-anchor="middle" class="title mono" font-size="12">Evidence</text>
+  <text x="290" y="586" class="mono sub" font-size="10.5">paper_id: "2607.01852"   chunk_id: "2607.01852-1"</text>
+  <text x="290" y="604" class="mono sub" font-size="10.5">source: "semantic"   text: "...different chunking strategies..."</text>
+</svg>
+    </div>
+    <figcaption>
+      Notice FAISS itself never returns text or a paper_id — it can't, it
+      never stored any. It returns bare integer positions. Every field you
+      actually care about (<code>paper_id</code>, <code>chunk_id</code>,
+      the text itself) comes back only after that position is translated
+      through <code>index_to_docstore_id</code> and looked up in the
+      docstore — two extra hops that exist purely to reattach what FAISS
+      was never given in the first place.
+    </figcaption>
+  </figure>
+</div>
+</body>
+</html>

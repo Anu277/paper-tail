@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Paper Agent Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#faf9f7;
+    --surface:#ffffff;
+    --surface-2:#f4f1f8;
+    --border:#ddd5e7;
+    --border-strong:#9d8aad;
+    --text:#241b2e;
+    --text-muted:#6c6078;
+    --accent:#ff6b00;
+    --accent-soft:#ff6b001c;
+    --mono-line:#4b3c57;
+    --llm:#7444c8;
+    --llm-soft:#7444c818;
+    --llm-border:#8f63df;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{
+    max-width:1180px;
+    margin:0 auto;
+    padding:64px 32px 96px;
+  }
+  .eyebrow{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 14px;
+  }
+  h1{
+    font-size:clamp(28px, 4vw, 40px);
+    font-weight:700;
+    line-height:1.15;
+    letter-spacing:-0.01em;
+    margin:0 0 18px;
+    text-wrap:balance;
+    max-width:18ch;
+  }
+  .lede{
+    font-size:17px;
+    line-height:1.65;
+    color:var(--text-muted);
+    max-width:70ch;
+    margin:0 0 8px;
+  }
+  .lede strong{ color:var(--text); font-weight:600; }
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 22px;
+    margin:28px 0 0;
+    padding:14px 18px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12.5px;
+    color:var(--text-muted);
+  }
+  .legend-num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--surface-2);
+    border:1.5px solid var(--border-strong);
+    font-family:"IBM Plex Mono", monospace;
+    font-size:10.5px;
+    font-weight:600;
+    color:var(--text);
+  }
+  .legend-chip{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:10px;
+    letter-spacing:0.06em;
+    font-weight:600;
+    color:var(--llm);
+    background:var(--llm-soft);
+    border:1px solid var(--llm-border);
+    border-radius:5px;
+    padding:2px 7px;
+  }
+  .legend-line{ width:34px; height:0; border-top:2px solid var(--mono-line); }
+  .legend-line.dashed{
+    border-top-style:dashed;
+    position:relative;
+  }
+
+  figure{
+    margin:56px 0 0;
+    padding:0;
+  }
+  figure .fig-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+  }
+  figure h2{
+    font-size:19px;
+    font-weight:600;
+    margin:0;
+  }
+  figure .fig-num{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    color:var(--text-muted);
+    letter-spacing:0.06em;
+  }
+  .diagram-frame{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:20px;
+    overflow-x:auto;
+  }
+  .diagram-frame svg{
+    display:block;
+    width:100%;
+    height:auto;
+    min-width:680px;
+  }
+  figcaption{
+    margin-top:14px;
+    font-size:14px;
+    line-height:1.6;
+    color:var(--text-muted);
+    max-width:80ch;
+  }
+  figcaption code{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.92em;
+    background:var(--surface-2);
+    padding:1px 5px;
+    border-radius:4px;
+    color:var(--text);
+  }
+
+  /* svg node styling */
+  svg text{ font-family:"IBM Plex Sans", sans-serif; fill:var(--text); }
+  svg .mono{ font-family:"IBM Plex Mono", monospace; }
+  svg .node-title{ font-weight:600; }
+  svg .node-sub{ fill:var(--text-muted); font-size:11px; }
+  svg .box{ fill:var(--surface); stroke:var(--border-strong); stroke-width:1.5; }
+  svg .box-soft{ fill:var(--surface-2); stroke:var(--border); stroke-width:1.5; }
+  svg .box-container{ fill:var(--surface-2); stroke:var(--border); stroke-width:1.5; stroke-dasharray:4 4; }
+  svg .box-accent{ fill:var(--accent-soft); stroke:var(--accent); stroke-width:2; }
+  svg .box-llm{ stroke:var(--llm-border); stroke-width:2; }
+  svg .box-conditional{ fill:var(--surface-2); stroke:var(--border-strong); stroke-width:1.5; stroke-dasharray:5 4; }
+  svg .edge{ fill:none; stroke:var(--mono-line); stroke-width:1.5; }
+  svg .edge-accent{ fill:none; stroke:var(--accent); stroke-width:2; }
+  svg .edge-loop{ fill:none; stroke:var(--mono-line); stroke-width:1.5; stroke-dasharray:7 6; animation: marchAnts 0.9s linear infinite; }
+  @keyframes marchAnts{ to { stroke-dashoffset:-13; } }
+  @media (prefers-reduced-motion: reduce){ svg .edge-loop{ animation:none; } }
+  svg .edge-label{ font-family:"IBM Plex Mono", monospace; font-size:10.5px; fill:var(--text-muted); }
+  svg .container-label{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; letter-spacing:0.06em; fill:var(--accent); font-weight:600; }
+  svg .badge-circle{ fill:var(--surface); stroke:var(--border-strong); stroke-width:1.5; }
+  svg .badge-text{ font-family:"IBM Plex Mono", monospace; font-size:12px; font-weight:600; fill:var(--text); text-anchor:middle; dominant-baseline:central; }
+  svg .badge-sub{ fill:var(--surface-2); stroke:var(--border); stroke-width:1.3; }
+  svg .badge-sub-text{ font-family:"IBM Plex Mono", monospace; font-size:9.5px; font-weight:600; fill:var(--text-muted); text-anchor:middle; dominant-baseline:central; }
+  svg .llm-chip{ fill:var(--llm-soft); stroke:var(--llm-border); stroke-width:1.3; }
+  svg .llm-chip-text{ font-family:"IBM Plex Mono", monospace; font-size:10px; font-weight:600; fill:var(--llm); text-anchor:middle; dominant-baseline:central; letter-spacing:0.05em; }
+
+  section.notes{
+    margin-top:64px;
+    padding-top:40px;
+    border-top:1px solid var(--border);
+  }
+  section.notes h2{
+    font-size:19px;
+    font-weight:600;
+    margin:0 0 20px;
+  }
+  .fix-list{
+    display:grid;
+    gap:16px;
+    margin:0 0 32px;
+    padding:0;
+    list-style:none;
+  }
+  .fix-item{
+    display:grid;
+    grid-template-columns:auto 1fr;
+    gap:14px;
+    padding:16px 18px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:3px solid var(--accent);
+    border-radius:8px;
+  }
+  .fix-item.llm{ border-left-color:var(--llm); }
+  .fix-item .tag{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--accent);
+    white-space:nowrap;
+    padding-top:2px;
+  }
+  .fix-item.llm .tag{ color:var(--llm); }
+  .fix-item p{
+    margin:0;
+    font-size:14.5px;
+    line-height:1.6;
+    color:var(--text);
+  }
+  .fix-item p .muted{ color:var(--text-muted); }
+
+  table.corrections{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13.5px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  table.corrections th{
+    text-align:left;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    font-weight:500;
+    padding:10px 16px;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+  }
+  table.corrections td{
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+    line-height:1.55;
+    vertical-align:top;
+  }
+  table.corrections tr:last-child td{ border-bottom:none; }
+  table.corrections td:first-child{ color:var(--text); font-weight:500; width:34%; }
+  table.corrections td:last-child{ color:var(--text-muted); }
+
+  .scope{
+    margin-top:32px;
+    padding:16px 18px;
+    background:var(--surface-2);
+    border-radius:8px;
+    font-size:14px;
+    line-height:1.6;
+    color:var(--text-muted);
+  }
+  .scope strong{ color:var(--text); }
+
+  ::-webkit-scrollbar{ height:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:6px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="eyebrow">System architecture · v5 — research paper agent</p>
+  <h1>Research Paper Agent Architecture</h1>
+  <p class="lede">
+    The <strong>Research Agent is the only controller</strong>, and it works over a
+    corpus of papers rather than generic documents. Every message passes through
+    stage 0 first — a scope gate that keeps this a papers-only assistant rather
+    than an open general-purpose chatbot, closing off a real prompt-injection
+    surface. Retrieval is not a fixed hybrid fan-out — the agent
+    <strong>chooses which method(s) to call per question</strong> — semantic,
+    BM25, metadata, any combination — and decides on its own whether to follow
+    a paper's citations or search again. Stages are numbered to match the plan;
+    green tags mark every point that actually calls an external LLM.
+  </p>
+
+  <div class="legend">
+    <span class="legend-item"><span class="legend-num">1</span> pipeline stage, in order</span>
+    <span class="legend-item"><span class="legend-num" style="border-radius:4px;width:auto;padding:0 5px;font-size:9.5px;">4.1</span> sub-step within a stage</span>
+    <span class="legend-item"><span class="legend-chip">LLM</span> this stage calls an external LLM</span>
+    <span class="legend-item"><span class="legend-line"></span> fixed path — always taken</span>
+    <span class="legend-item"><span class="legend-line dashed"></span> conditional / iterative — agent's choice, animated</span>
+  </div>
+
+  <!-- ================= FIGURE 1 ================= -->
+  <figure>
+    <div class="fig-head">
+      <h2>Runtime: adaptive research &amp; answer loop</h2>
+      <span class="fig-num">FIG. 01</span>
+    </div>
+    <div class="diagram-frame">
+<svg viewBox="0 0 1000 2142" role="img" aria-label="Eleven numbered stages over a paper corpus, starting at 0: an Intent / Scope Gate classifies every message as research, greeting, or off_topic before anything else runs — research proceeds to stage 1, greeting or off_topic gets a direct reply with no search and no general-knowledge answer, closing off a prompt-injection surface. The Research Agent plans and reads a shared Research Workspace, the Search Planner issues a query, the Retrieval Layer runs only the semantic, BM25, or metadata methods the agent picked, Result Processing merges the resulting papers and sections, the Evidence Evaluator checks whether papers agree, and the Research Decision either proceeds to Final Claim Verification and the Answer Generator, loops back to the Search Planner on missing evidence or conflicting results, or conditionally branches into Citation Traversal to follow a cited paper, whose results loop back into Result Processing rather than straight to the Evidence Evaluator. Stages 0, 1, 3, 7, 9 and 10 are tagged as calling an external LLM.">
+  <defs>
+    <marker id="arrowN" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--mono-line)"></path>
+    </marker>
+  </defs>
+
+  <!-- USER -->
+  <rect class="box" x="390" y="20" width="160" height="64" rx="6"></rect>
+  <text x="470" y="48" text-anchor="middle" class="node-title mono" font-size="12.5">USER</text>
+  <text x="470" y="66" text-anchor="middle" class="node-sub">question</text>
+  <path class="edge" d="M470,84 L470,114" marker-end="url(#arrowN)"></path>
+
+  <!-- STAGE 0 : INTENT / SCOPE GATE -->
+  <rect class="box box-llm" x="150" y="114" width="640" height="130" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="114" r="16"></circle>
+  <text x="172" y="115" class="badge-text">0</text>
+  <rect class="llm-chip" x="706" y="126" width="58" height="22" rx="5"></rect>
+  <text x="735" y="138" class="llm-chip-text">LLM</text>
+  <text x="470" y="140" text-anchor="middle" class="node-title mono" font-size="13">INTENT / SCOPE GATE</text>
+  <text x="172" y="162" class="node-sub" font-size="11.5">• research — proceeds to 1, exactly as before</text>
+  <text x="172" y="180" class="node-sub" font-size="11.5">• greeting — light reply, skips everything below</text>
+  <text x="172" y="198" class="node-sub" font-size="11.5">• off_topic — firm refusal, NEVER answered from the model's own knowledge</text>
+  <path class="edge" d="M470,244 L470,276" marker-end="url(#arrowN)"></path>
+
+  <path class="edge-loop" d="M790,179 L850,179" marker-end="url(#arrowN)"></path>
+  <rect class="box-conditional" x="850" y="120" width="130" height="118" rx="6"></rect>
+  <text x="915" y="148" text-anchor="middle" class="node-title mono" font-size="10.5">DIRECT REPLY</text>
+  <text x="915" y="170" text-anchor="middle" class="node-sub" font-size="10">greeting / off_topic</text>
+  <text x="915" y="186" text-anchor="middle" class="node-sub" font-size="10">bypasses stages 1–10</text>
+  <text x="915" y="202" text-anchor="middle" class="node-sub" font-size="10">— no search, no LLM</text>
+  <text x="915" y="218" text-anchor="middle" class="node-sub" font-size="10">general-knowledge answer</text>
+
+  <!-- STAGE 1 : AGENT -->
+  <rect class="box box-llm" x="150" y="276" width="640" height="140" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="276" r="16"></circle>
+  <text x="172" y="277" class="badge-text">1</text>
+  <rect class="llm-chip" x="706" y="288" width="58" height="22" rx="5"></rect>
+  <text x="735" y="300" class="llm-chip-text">LLM</text>
+  <text x="470" y="304" text-anchor="middle" class="node-title mono" font-size="13">RESEARCH AGENT / CONTROLLER</text>
+  <text x="172" y="328" class="node-sub" font-size="11.5">• understands and decomposes the question</text>
+  <text x="172" y="346" class="node-sub" font-size="11.5">• decides what evidence is needed next</text>
+  <text x="172" y="364" class="node-sub" font-size="11.5">• decides retrieval strategy — not a fixed fan-out</text>
+  <text x="172" y="382" class="node-sub" font-size="11.5">• decides when another search is required, and when to stop</text>
+  <path class="edge" d="M470,416 L470,448" marker-end="url(#arrowN)"></path>
+
+  <!-- STAGE 2 : STATE -->
+  <rect class="box-accent" x="150" y="448" width="640" height="110" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="448" r="16"></circle>
+  <text x="172" y="449" class="badge-text">2</text>
+  <text x="470" y="474" text-anchor="middle" class="node-title mono" font-size="12.5">RESEARCH WORKSPACE</text>
+  <text x="172" y="496" class="node-sub" font-size="11.5">papers found · claims · evidence · contradictions · provenance</text>
+  <text x="172" y="514" class="node-sub" font-size="11.5">confidence · missing information — shared memory, not a stage that runs once</text>
+  <text x="172" y="532" class="node-sub" font-size="11.5">(written by 7 Evidence Evaluator · read by 8 Research Decision)</text>
+  <path class="edge" d="M470,558 L470,590" marker-end="url(#arrowN)"></path>
+
+  <!-- STAGE 3 : PLANNER -->
+  <rect class="box box-llm" x="150" y="590" width="640" height="120" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="590" r="16"></circle>
+  <text x="172" y="591" class="badge-text">3</text>
+  <rect class="llm-chip" x="706" y="602" width="58" height="22" rx="5"></rect>
+  <text x="735" y="614" class="llm-chip-text">LLM</text>
+  <text x="470" y="616" text-anchor="middle" class="node-title mono" font-size="13">SEARCH PLANNER</text>
+  <text x="172" y="638" class="node-sub" font-size="11.5">• which query to issue</text>
+  <text x="172" y="656" class="node-sub" font-size="11.5">• which retrieval method(s) — one, two, or all three</text>
+  <text x="172" y="674" class="node-sub" font-size="11.5">• narrow / broaden / filter</text>
+  <path class="edge" d="M470,710 L470,742" marker-end="url(#arrowN)"></path>
+  <text x="482" y="730" class="edge-label">issues plan</text>
+
+  <!-- STAGE 4 : RETRIEVAL LAYER (container) -->
+  <rect class="box-container" x="110" y="742" width="720" height="230" rx="8"></rect>
+  <circle class="badge-circle" cx="132" cy="742" r="16"></circle>
+  <text x="132" y="743" class="badge-text">4</text>
+  <text x="150" y="764" class="container-label">RETRIEVAL LAYER — agent selects 1, 2, or all 3 methods below</text>
+
+  <!-- Route below the section heading before branching to the three methods. -->
+  <path class="edge" d="M470,742 L470,786 L810,786" ></path>
+  <path class="edge-loop" d="M810,786 L240,786 L240,812" marker-end="url(#arrowN)"></path>
+  <path class="edge-loop" d="M810,786 L470,786 L470,812" marker-end="url(#arrowN)"></path>
+  <path class="edge-loop" d="M810,786 L700,786 L700,812" marker-end="url(#arrowN)"></path>
+
+  <rect class="box-soft" x="140" y="812" width="200" height="100" rx="6"></rect>
+  <rect class="badge-sub" x="140" y="800" width="30" height="18" rx="4"></rect>
+  <text x="155" y="810" class="badge-sub-text">4.1</text>
+  <text x="240" y="844" text-anchor="middle" class="node-title mono" font-size="11">SEMANTIC SEARCH</text>
+  <text x="240" y="864" text-anchor="middle" class="node-sub">embeddings · similarity</text>
+  <text x="240" y="882" text-anchor="middle" class="node-sub">best for meaning / paraphrase</text>
+
+  <rect class="box-soft" x="370" y="812" width="200" height="100" rx="6"></rect>
+  <rect class="badge-sub" x="370" y="800" width="30" height="18" rx="4"></rect>
+  <text x="385" y="810" class="badge-sub-text">4.2</text>
+  <text x="470" y="844" text-anchor="middle" class="node-title mono" font-size="11">BM25 / KEYWORD</text>
+  <text x="470" y="864" text-anchor="middle" class="node-sub">exact terms, IDs, codes</text>
+  <text x="470" y="882" text-anchor="middle" class="node-sub">best for lexical precision</text>
+
+  <rect class="box-soft" x="600" y="812" width="200" height="100" rx="6"></rect>
+  <rect class="badge-sub" x="600" y="800" width="30" height="18" rx="4"></rect>
+  <text x="615" y="810" class="badge-sub-text">4.3</text>
+  <text x="700" y="844" text-anchor="middle" class="node-title mono" font-size="11">METADATA FILTER</text>
+  <text x="700" y="864" text-anchor="middle" class="node-sub">year · venue · authors · dataset</text>
+  <text x="700" y="882" text-anchor="middle" class="node-sub">best for scoping a search</text>
+
+  <path class="edge-loop" d="M240,912 L240,934 L470,934" ></path>
+  <path class="edge-loop" d="M470,912 L470,934" ></path>
+  <path class="edge-loop" d="M700,912 L700,934 L470,934" ></path>
+  <path class="edge-loop" d="M470,934 L470,972" marker-end="url(#arrowN)"></path>
+
+  <path class="edge" d="M470,972 L470,1005" marker-end="url(#arrowN)"></path>
+  <text x="482" y="994" class="edge-label">selected results</text>
+
+  <!-- STAGE 5 : RESULT PROCESSING -->
+  <rect class="box" x="150" y="1005" width="640" height="100" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="1005" r="16"></circle>
+  <text x="172" y="1006" class="badge-text">5</text>
+  <text x="470" y="1030" text-anchor="middle" class="node-title mono" font-size="12.5">RESULT PROCESSING</text>
+  <text x="172" y="1052" class="node-sub" font-size="11.5">merge only if more than one method ran · deduplicate · rank</text>
+  <text x="172" y="1070" class="node-sub" font-size="11.5">returns papers / sections / abstracts / tables, not bare text chunks</text>
+  <path class="edge" d="M470,1105 L470,1137" marker-end="url(#arrowN)"></path>
+
+  <!-- STAGE 7 : EVALUATOR -->
+  <rect class="box box-llm" x="150" y="1137" width="640" height="130" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="1137" r="16"></circle>
+  <text x="172" y="1138" class="badge-text">7</text>
+  <rect class="llm-chip" x="706" y="1149" width="58" height="22" rx="5"></rect>
+  <text x="735" y="1161" class="llm-chip-text">LLM</text>
+  <text x="470" y="1163" text-anchor="middle" class="node-title mono" font-size="13">EVIDENCE EVALUATOR</text>
+  <text x="172" y="1185" class="node-sub" font-size="11.5">• relevant? supports the claim? peer-reviewed / preprint / cited how often?</text>
+  <text x="172" y="1203" class="node-sub" font-size="11.5">• do two papers report different results for the same setup?</text>
+  <text x="172" y="1221" class="node-sub" font-size="11.5">• what's still missing?</text>
+  <path class="edge" d="M470,1267 L470,1299" marker-end="url(#arrowN)"></path>
+
+  <!-- STAGE 8 : DECISION -->
+  <rect class="box" x="150" y="1299" width="640" height="95" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="1299" r="16"></circle>
+  <text x="172" y="1300" class="badge-text">8</text>
+  <text x="470" y="1326" text-anchor="middle" class="node-title mono" font-size="13">RESEARCH DECISION</text>
+  <text x="470" y="1348" text-anchor="middle" class="node-sub">is the evidence enough, conflicted, missing, or just missing source context?</text>
+
+  <path class="edge" d="M470,1394 L470,1414" ></path>
+  <path class="edge" d="M220,1414 L710,1414" ></path>
+  <path class="edge" d="M220,1414 L220,1434" marker-end="url(#arrowN)"></path>
+  <path class="edge-loop" d="M380,1414 L380,1434" marker-end="url(#arrowN)"></path>
+  <path class="edge-loop" d="M540,1414 L540,1434" marker-end="url(#arrowN)"></path>
+  <path class="edge-loop" d="M710,1414 L710,1434" marker-end="url(#arrowN)"></path>
+
+  <rect class="box-soft" x="150" y="1434" width="140" height="80" rx="6"></rect>
+  <rect class="badge-sub" x="150" y="1422" width="30" height="18" rx="4"></rect>
+  <text x="165" y="1432" class="badge-sub-text">8.1</text>
+  <text x="220" y="1470" text-anchor="middle" class="node-title mono" font-size="11">ENOUGH</text>
+  <text x="220" y="1488" text-anchor="middle" class="node-sub">evidence is sufficient</text>
+
+  <rect class="box-conditional" x="310" y="1434" width="140" height="80" rx="6"></rect>
+  <rect class="badge-sub" x="310" y="1422" width="30" height="18" rx="4"></rect>
+  <text x="325" y="1432" class="badge-sub-text">8.2</text>
+  <text x="380" y="1470" text-anchor="middle" class="node-title mono" font-size="11">MISSING</text>
+  <text x="380" y="1488" text-anchor="middle" class="node-sub">gap in coverage</text>
+
+  <rect class="box-conditional" x="470" y="1434" width="140" height="80" rx="6"></rect>
+  <rect class="badge-sub" x="470" y="1422" width="30" height="18" rx="4"></rect>
+  <text x="485" y="1432" class="badge-sub-text">8.3</text>
+  <text x="540" y="1470" text-anchor="middle" class="node-title mono" font-size="11">CONFLICT</text>
+  <text x="540" y="1488" text-anchor="middle" class="node-sub">papers report different results</text>
+
+  <rect class="box-conditional" x="630" y="1434" width="160" height="80" rx="6"></rect>
+  <rect class="badge-sub" x="630" y="1422" width="34" height="18" rx="4"></rect>
+  <text x="647" y="1432" class="badge-sub-text">8.4*</text>
+  <text x="710" y="1464" text-anchor="middle" class="node-title mono" font-size="10.5">NEED SOURCE</text>
+  <text x="710" y="1480" text-anchor="middle" class="node-title mono" font-size="10.5">CONTEXT</text>
+
+  <!-- loop backs to planner (3) -->
+  <path class="edge-loop" d="M380,1514 L380,1534 L90,1534 L90,650 L150,650" marker-end="url(#arrowN)"></path>
+  <text x="0" y="0" class="edge-label" transform="translate(112 1090) rotate(-90)" text-anchor="middle">8.2 · missing evidence → replan</text>
+
+  <path class="edge-loop" d="M540,1514 L540,1554 L55,1554 L55,670 L150,670" marker-end="url(#arrowN)"></path>
+  <text x="0" y="0" class="edge-label" transform="translate(28 1110) rotate(-90)" text-anchor="middle">8.3 · opposing evidence → replan</text>
+
+  <!-- 8.1 to stage 9 -->
+  <path class="edge" d="M220,1514 L220,1712" marker-end="url(#arrowN)"></path>
+
+  <!-- 8.4 to reference traversal -->
+  <path class="edge-loop" d="M710,1514 L710,1574" marker-end="url(#arrowN)"></path>
+
+  <!-- STAGE 6 : CITATION TRAVERSAL (conditional) -->
+  <rect class="box-conditional" x="550" y="1574" width="320" height="100" rx="8"></rect>
+  <circle class="badge-circle" cx="572" cy="1574" r="16"></circle>
+  <text x="572" y="1575" class="badge-text">6</text>
+  <text x="710" y="1600" text-anchor="middle" class="node-title mono" font-size="12">6 · OPTIONAL — CITATION TRAVERSAL</text>
+  <text x="710" y="1620" text-anchor="middle" class="node-sub">follow a paper's citations to the cited paper</text>
+  <text x="710" y="1638" text-anchor="middle" class="node-sub">queries the citation graph (Fig. 02) · invoked from 8.4</text>
+  <text x="710" y="1656" text-anchor="middle" class="node-sub">returns new papers → rejoins at 5, not straight to 7</text>
+
+  <path class="edge-loop" d="M870,1624 L920,1624 L920,1055 L790,1055" marker-end="url(#arrowN)"></path>
+  <text x="0" y="0" class="edge-label" transform="translate(940 1340) rotate(-90)" text-anchor="middle">6 → 5 · reprocess retrieval results</text>
+
+  <!-- STAGE 9 : FINAL CLAIM VERIFICATION -->
+  <rect class="box box-llm" x="150" y="1712" width="640" height="130" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="1712" r="16"></circle>
+  <text x="172" y="1713" class="badge-text">9</text>
+  <rect class="llm-chip" x="706" y="1724" width="58" height="22" rx="5"></rect>
+  <text x="735" y="1736" class="llm-chip-text">LLM</text>
+  <text x="470" y="1738" text-anchor="middle" class="node-title mono" font-size="13">FINAL CLAIM VERIFICATION</text>
+  <text x="172" y="1760" class="node-sub" font-size="11.5">every important claim → supporting evidence → provenance → confidence</text>
+  <text x="172" y="1778" class="node-sub" font-size="11.5">unsupported claims are removed or qualified, not left in</text>
+  <path class="edge" d="M470,1842 L470,1874" marker-end="url(#arrowN)"></path>
+
+  <!-- STAGE 10 : ANSWER GENERATOR -->
+  <rect class="box box-llm" x="150" y="1874" width="640" height="110" rx="8"></rect>
+  <circle class="badge-circle" cx="172" cy="1874" r="16"></circle>
+  <text x="172" y="1875" class="badge-text">10</text>
+  <rect class="llm-chip" x="706" y="1886" width="58" height="22" rx="5"></rect>
+  <text x="735" y="1898" class="llm-chip-text">LLM</text>
+  <text x="470" y="1900" text-anchor="middle" class="node-title mono" font-size="13">ANSWER GENERATOR</text>
+  <text x="172" y="1922" class="node-sub" font-size="11.5">writes from the verified research workspace · citations · sources · uncertainty</text>
+  <path class="edge" d="M470,1984 L470,2016" marker-end="url(#arrowN)"></path>
+
+  <!-- FINAL ANSWER -->
+  <rect class="box-accent" x="315" y="2016" width="310" height="80" rx="8"></rect>
+  <text x="470" y="2050" text-anchor="middle" class="node-title mono" font-size="12.5">RESEARCH REPORT</text>
+  <text x="470" y="2070" text-anchor="middle" class="node-sub">+ citations + sources + uncertainty</text>
+
+  <!-- Return line runs down the left margin (x=30) instead of the right —
+       Stage 6's box (x=550-870) and the Direct Reply satellite (x=850-980)
+       overlap each other's x-range, so no single vertical line on the
+       right side can clear both at once. Exits the final-answer box from
+       its BOTTOM edge first (not its right edge) so the leftward run
+       doesn't cut back through the box's own body. x=30 stays clear of
+       the 8.2/8.3 replan lines (x=55, x=90) the whole way up. -->
+  <path class="edge" d="M470,2096 L470,2120 L30,2120 L30,52 L390,52" marker-end="url(#arrowN)"></path>
+</svg>
+    </div>
+    <figcaption>
+      Stage 0 runs before any of this: a real production incident, not a
+      hypothetical one, is what put it there. An earlier version let any
+      non-research message get "a friendly reply" from the model's own
+      knowledge — it correctly skipped searching the corpus for a greeting,
+      but also happily answered unrelated general-knowledge questions, and
+      would have answered a "ignore previous instructions" attempt too,
+      since nothing told it to refuse. off_topic now gets a firm scoped
+      refusal instead, verified against a real injection-style message.
+      Adaptive retrieval is the point of stage 4: the agent's plan (3) decides
+      whether one, two, or all three of semantic / BM25 / metadata run for a given
+      question — they are not a fixed hybrid fan-out, which is why those paths are
+      drawn dashed and animated rather than solid. Stage 6 (citation traversal) is
+      likewise conditional: it only runs when the decision at 8 explicitly asks for
+      source context (8.4), querying the citation graph built during ingestion
+      (Fig. 02) rather than searching the corpus again. Its results loop back into
+      5, not directly into 7 — a paper pulled in by citation traversal still needs
+      the same dedupe/rank/merge treatment as anything else Result Processing
+      handles, so it isn't skipped just because the paper arrived by a different
+      route.
+    </figcaption>
+  </figure>
+
+  <!-- ================= FIGURE 2 ================= -->
+  <figure>
+    <div class="fig-head">
+      <h2>Offline: paper ingestion, indexing &amp; citation graph</h2>
+      <span class="fig-num">FIG. 02</span>
+    </div>
+    <div class="diagram-frame">
+<svg viewBox="0 0 980 660" role="img" aria-label="Papers flow through acquisition, parsing, and chunking into four peer stores — a vector index, a BM25 index, a document and metadata store, and a citation graph of paper-cites-paper edges. The first three are keyed by chunk ID and queried together at runtime; the citation graph is keyed separately by paper ID and is what stage 6 citation traversal queries in the runtime loop.">
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--mono-line)"></path>
+    </marker>
+  </defs>
+
+  <rect class="box" x="280" y="20" width="400" height="70" rx="6"></rect>
+  <text x="480" y="50" text-anchor="middle" class="node-title mono" font-size="12">KNOWLEDGE SOURCES</text>
+  <text x="480" y="68" text-anchor="middle" class="node-sub">arXiv · journal PDFs · conference proceedings · preprint servers</text>
+
+  <path class="edge" d="M480,90 L480,130" marker-end="url(#arrow2)"></path>
+
+  <rect class="box" x="230" y="130" width="500" height="70" rx="6"></rect>
+  <text x="480" y="160" text-anchor="middle" class="node-title mono" font-size="12">KEYWORD REFINEMENT + ACQUISITION</text>
+  <text x="480" y="178" text-anchor="middle" class="node-sub">raw topic → clean search terms · source URI · DOI / arXiv ID · fetch time</text>
+
+  <path class="edge" d="M480,200 L480,240" marker-end="url(#arrow2)"></path>
+
+  <rect class="box" x="230" y="240" width="500" height="70" rx="6"></rect>
+  <text x="480" y="270" text-anchor="middle" class="node-title mono" font-size="12">PARSE / OCR / CLEAN / NORMALIZE</text>
+  <text x="480" y="288" text-anchor="middle" class="node-sub">sections · abstract · tables · reference list · canonical metadata</text>
+
+  <path class="edge" d="M480,310 L480,350" marker-end="url(#arrow2)"></path>
+
+  <rect class="box" x="230" y="350" width="500" height="70" rx="6"></rect>
+  <text x="480" y="380" text-anchor="middle" class="node-title mono" font-size="12">CHUNK + ENRICH</text>
+  <text x="480" y="398" text-anchor="middle" class="node-sub">chunk IDs · headings · offsets · in-text citation markers</text>
+
+  <!-- fan to four peers -->
+  <path class="edge" d="M480,420 L480,440 L125,440 L125,460" marker-end="url(#arrow2)"></path>
+  <path class="edge" d="M480,420 L480,440 L362,440 L362,460" marker-end="url(#arrow2)"></path>
+  <path class="edge" d="M480,420 L480,440 L599,440 L599,460" marker-end="url(#arrow2)"></path>
+  <path class="edge" d="M480,420 L480,440 L836,440 L836,460" marker-end="url(#arrow2)"></path>
+
+  <rect class="box-soft" x="20" y="460" width="210" height="90" rx="6"></rect>
+  <text x="125" y="492" text-anchor="middle" class="node-title mono" font-size="11">VECTOR INDEX</text>
+  <text x="125" y="512" text-anchor="middle" class="node-sub">vectors keyed by chunk ID</text>
+
+  <rect class="box-soft" x="257" y="460" width="210" height="90" rx="6"></rect>
+  <text x="362" y="492" text-anchor="middle" class="node-title mono" font-size="11">BM25 INDEX</text>
+  <text x="362" y="512" text-anchor="middle" class="node-sub">terms keyed by chunk ID</text>
+
+  <rect class="box-soft" x="494" y="460" width="210" height="90" rx="6"></rect>
+  <text x="599" y="492" text-anchor="middle" class="node-title mono" font-size="11">METADATA STORE</text>
+  <text x="599" y="512" text-anchor="middle" class="node-sub">docs · locations · provenance</text>
+
+  <rect class="box-accent" x="731" y="460" width="210" height="90" rx="6"></rect>
+  <text x="836" y="492" text-anchor="middle" class="node-title mono" font-size="11">CITATION GRAPH</text>
+  <text x="836" y="512" text-anchor="middle" class="node-sub">paper → cites → paper</text>
+
+  <!-- peer association for the chunk-ID group, not a flow -->
+  <path class="edge-loop" d="M125,550 L125,575" ></path>
+  <path class="edge-loop" d="M362,550 L362,575" ></path>
+  <path class="edge-loop" d="M599,550 L599,575" ></path>
+  <path class="edge-loop" d="M125,575 L599,575" ></path>
+  <text x="362" y="600" text-anchor="middle" class="edge-label">joined by chunk ID — queried together at runtime, not a data flow</text>
+
+  <!-- citation graph: separate key, separate note -->
+  <path class="edge-loop" d="M836,550 L836,575" ></path>
+  <text x="836" y="600" text-anchor="middle" class="edge-label">keyed by paper ID —</text>
+  <text x="836" y="616" text-anchor="middle" class="edge-label">resolved via doc ID in the metadata store</text>
+</svg>
+    </div>
+    <figcaption>
+      Keyword refinement earns its place in the acquisition box for a
+      concrete, measured reason: arXiv's search does literal term matching,
+      not language understanding. Sending a raw user topic like "i want
+      about quantum computing" straight to it returned completely
+      unrelated results (particle physics, gravitational-wave papers) —
+      stripping it to "quantum computing" first returned exactly on-topic
+      papers. This step is a static stopword list, not an LLM call — it
+      only needs to strip filler words, not rewrite indirect phrasing, so
+      the cheaper mechanical fix covers the actual failure mode fully.
+      The citation graph is the other genuinely new artifact for a research-paper
+      agent — it doesn't exist in a generic RAG pipeline. It's built here by
+      resolving each paper's reference list (parsed at the previous stage) to
+      other paper IDs, either inside this corpus or as an external DOI /
+      arXiv ID to fetch later. Without this step, stage 6 (citation traversal) in
+      Fig. 01 would have nothing to query and "follow this paper's citations"
+      would just be another vector search. It's keyed by paper ID rather than
+      chunk ID, so it's drawn as a separate peer rather than folded into the
+      chunk-keyed group on the left.
+    </figcaption>
+  </figure>
+
+  <!-- ================= NOTES ================= -->
+  <section class="notes">
+    <h2>What changed in this version</h2>
+    <ul class="fix-list">
+      <li class="fix-item llm">
+        <span class="tag">New: Stage 0, Intent / Scope Gate</span>
+        <p>Every message is classified <strong>before</strong> stage 1 runs — research / greeting / off_topic. <span class="muted">Built after a real incident: the first version let a non-research message get "a friendly reply" unconditionally, which correctly skipped searching for a greeting but also answered unrelated general-knowledge questions from the model's own training, and would have complied with an "ignore previous instructions" attempt too. off_topic now gets a firm refusal instead — verified against a real injection-style test message, not just the happy path.</span></p>
+      </li>
+      <li class="fix-item">
+        <span class="tag">New: keyword refinement (Fig. 02)</span>
+        <p>A raw user topic is cleaned up before it ever reaches arXiv's search API. <span class="muted">Proved empirically that arXiv's search does literal term matching, not language understanding — "i want about quantum computing" returned totally unrelated results, "quantum computing" alone returned exactly on-topic papers. A static stopword list handles this fully; no LLM call needed since the actual failure mode is filler words, not phrasing an LLM would need to rewrite.</span></p>
+      </li>
+      <li class="fix-item">
+        <span class="tag">Citation results rejoin at 5, not 7</span>
+        <p>Citation traversal (6) now loops back into Result Processing (5), not directly into the Evidence Evaluator (7). <span class="muted">A paper pulled in by following a citation is still a retrieval result — it needs the same dedupe, ranking, and metadata resolution as anything semantic/BM25/metadata search returns. Sending it straight to evaluation would let citation-sourced papers skip a processing step everything else goes through.</span></p>
+      </li>
+      <li class="fix-item">
+        <span class="tag">Domain pivot — research paper agent</span>
+        <p>The corpus is papers, not generic documents, and one artifact had to be added rather than relabeled: a <strong>citation graph</strong> in Fig. 02. <span class="muted">Renaming boxes (Research State → Research Workspace, "sources disagree" → "papers report different results") is cosmetic and doesn't change the diagram's shape. Citation traversal (6) reading a real paper → cites → paper graph is not cosmetic — that graph didn't exist anywhere in the ingestion pipeline until now, so stage 6 previously had nothing concrete to query.</span></p>
+      </li>
+      <li class="fix-item">
+        <span class="tag">Adaptive retrieval</span>
+        <p>Stage 4 no longer fans out to semantic + BM25 + metadata on every query. <span class="muted">Running all three every time is fixed hybrid RAG, not agentic RAG — the agent has to actually choose, or "the agent decides retrieval strategy" is cosmetic. The three methods are now optional branches (4.1–4.3), drawn dashed and animated, selected by the plan at stage 3.</span></p>
+      </li>
+      <li class="fix-item">
+        <span class="tag">Self-contradiction resolved</span>
+        <p>Citation traversal (6) is drawn as a conditional branch off the decision (8.4), not an inline stage between 5 and 7. <span class="muted">The pasted "final architecture" put stage 6 in three different places across itself — inline in the main diagram, moved to a conditional branch in its own stated correction, then back inline in its closing summary. The conditional version is the one the correction argues for ("the agent decides whether following references is useful, rather than blindly doing it"), so that's the version built here.</span></p>
+      </li>
+      <li class="fix-item llm">
+        <span class="tag">LLM boundary made explicit</span>
+        <p>Stages 0, 1, 3, 7, 9, and 10 are tagged — scope classification, reasoning/decomposition, query formulation, evidence judgment, claim verification, and answer writing. <span class="muted">Stages 2, 4, 5, 6, and 8 are mechanical (state storage, retrieval calls, merging, graph traversal, branching) and are not LLM calls, even though 8's branching logic is often implemented by reading an LLM's output from stage 7.</span></p>
+      </li>
+      <li class="fix-item">
+        <span class="tag">Numbering</span>
+        <p>Badges 0–10 follow the pasted plan's numbering, with stage 0 added ahead of it. <span class="muted">Outcome 8.4 ("need source context") is marked with an asterisk — it's not numbered in the source material, but the conditional reference-traversal branch needs an addressable outcome to route from, so it was added here as 8.4.</span></p>
+      </li>
+    </ul>
+
+    <table class="corrections">
+      <tr><th>Carried over from earlier drafts</th><th>Why it matters</th></tr>
+      <tr><td>Explicit Research State (2)</td><td>The agent needs persistent plan, search history, claims, and gaps to make an informed next decision — not just raw retrieved chunks.</td></tr>
+      <tr><td>Result processing only merges when needed (5)</td><td>If the agent only ran one retrieval method, there's nothing to fuse — forcing a merge step every time hides that the methods are optional.</td></tr>
+      <tr><td>Decision node with named outcomes (8)</td><td>"Enough evidence" should still route to verification before an answer is generated — never straight to generation on a single evaluator pass.</td></tr>
+      <tr><td>Answer generation gated on verified claims (9 → 10)</td><td>Citations require every claim to be traceable to evidence and provenance, not just "the retrieved chunks looked relevant."</td></tr>
+    </table>
+
+    <p class="scope"><strong>Scope note —</strong> if this system also needs to search the live web or call external APIs, model those as additional tools the Search Planner (3) can select at stage 4, with their own fetch, permission, and citation path. Don't fold live results into the indexed corpus in Fig. 02 as if they were already ingested.</p>
+  </section>
+
+</div>
+</body>
+</html>

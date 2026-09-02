@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chunking Before/After</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#f2f4f8; --surface:#ffffff; --surface-2:#e8ecf3;
+    --border:#c5cbdb; --border-strong:#8c93ab;
+    --text:#171b26; --text-muted:#5b6377;
+    --accent:#0e7c8c; --accent-soft:#0e7c8c14;
+    --bad:#b3432f; --bad-soft:#b3432f14; --bad-border:#c65a42;
+    --good:#1f8a4c; --good-soft:#1f8a4c14; --good-border:#2fa864;
+    --warn:#a8791a; --warn-soft:#a8791a1f;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1320; --surface:#161c2b; --surface-2:#1d2436;
+      --border:#2a3350; --border-strong:#4a5578;
+      --text:#e7eaf3; --text-muted:#98a1ba;
+      --accent:#4fd6df; --accent-soft:#4fd6df14;
+      --bad:#e8917f; --bad-soft:#e8917f1a; --bad-border:#c65a42;
+      --good:#57d68f; --good-soft:#57d68f14; --good-border:#3fae70;
+      --warn:#e0b355; --warn-soft:#e0b3551f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1320; --surface:#161c2b; --surface-2:#1d2436;
+    --border:#2a3350; --border-strong:#4a5578;
+    --text:#e7eaf3; --text-muted:#98a1ba;
+    --accent:#4fd6df; --accent-soft:#4fd6df14;
+    --bad:#e8917f; --bad-soft:#e8917f1a; --bad-border:#c65a42;
+    --good:#57d68f; --good-soft:#57d68f14; --good-border:#3fae70;
+    --warn:#e0b355; --warn-soft:#e0b3551f;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:"IBM Plex Sans",sans-serif; -webkit-font-smoothing:antialiased; }
+  .page{ max-width:1160px; margin:0 auto; padding:56px 28px 90px; }
+  .eyebrow{ font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin:0 0 12px; }
+  h1{ font-size:clamp(26px,4vw,36px); font-weight:700; margin:0 0 14px; }
+  .lede{ font-size:16px; line-height:1.6; color:var(--text-muted); max-width:78ch; margin:0 0 8px; }
+  .lede code{ font-family:"IBM Plex Mono",monospace; font-size:.9em; background:var(--surface-2); padding:1px 5px; border-radius:4px; color:var(--text); }
+
+  .columns{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:36px; align-items:start; }
+  @media (max-width: 860px){ .columns{ grid-template-columns:1fr; } }
+
+  .col-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .col-tag{ font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.05em; padding:3px 10px; border-radius:5px; }
+  .col-tag.bad{ background:var(--bad-soft); color:var(--bad); border:1px solid var(--bad-border); }
+  .col-tag.good{ background:var(--good-soft); color:var(--good); border:1px solid var(--good-border); }
+  .col-head h2{ font-size:16px; font-weight:600; margin:0; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin-bottom:14px; }
+  .card.mixed{ border-color:var(--bad-border); }
+  .card.clean{ border-color:var(--good-border); }
+
+  .card-meta{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .tag{ font-family:"IBM Plex Mono",monospace; font-size:10.5px; padding:2px 8px; border-radius:4px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-muted); }
+  .tag.section-a{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+  .tag.section-b{ background:#8b5cf614; border-color:#8b5cf6; color:#8b5cf6; }
+  .tag.none{ background:var(--bad-soft); border-color:var(--bad-border); color:var(--bad); font-style:italic; }
+
+  .chunk-text{ font-family:"IBM Plex Mono",monospace; font-size:12.5px; line-height:1.7; white-space:pre-wrap; }
+  .hl-related{ background:var(--accent-soft); border-radius:3px; box-shadow:0 0 0 2px var(--accent-soft); }
+  .hl-method{ background:#8b5cf614; border-radius:3px; box-shadow:0 0 0 2px #8b5cf614; }
+  .hl-artifact{ background:var(--warn-soft); border-radius:3px; box-shadow:0 0 0 2px var(--warn-soft); text-decoration:underline wavy var(--warn); }
+
+  .annotation{ font-family:"IBM Plex Sans",sans-serif; font-size:12px; color:var(--warn); margin-top:8px; display:flex; gap:6px; align-items:baseline; }
+  .annotation::before{ content:"⚠"; }
+
+  .verdict{ font-size:12.5px; color:var(--text-muted); margin-top:6px; padding-top:10px; border-top:1px dashed var(--border); }
+  .verdict b{ color:var(--text); }
+
+  table.summary{ width:100%; border-collapse:collapse; margin-top:40px; font-size:13.5px; background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  table.summary th{ text-align:left; font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); font-weight:500; padding:10px 16px; background:var(--surface-2); border-bottom:1px solid var(--border); }
+  table.summary td{ padding:11px 16px; border-bottom:1px solid var(--border); vertical-align:top; }
+  table.summary tr:last-child td{ border-bottom:none; }
+  table.summary td:first-child{ font-weight:500; width:26%; }
+  table.summary .bad-cell{ color:var(--bad); }
+  table.summary .good-cell{ color:var(--good); }
+
+  .source-note{ margin-top:32px; font-size:13px; color:var(--text-muted); background:var(--surface-2); border-radius:8px; padding:14px 18px; }
+  .source-note code{ font-family:"IBM Plex Mono",monospace; background:var(--surface); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Real output, same paper, same passage</p>
+  <h1>Parsing &amp; Chunking: Before vs After</h1>
+  <p class="lede">
+    Both sides below are <strong>real output</strong> from the same paper
+    (<code>2607.01852</code>), the same passage — nothing invented for the
+    comparison. Left: what <code>app/ingestion/parser.py</code> + our current
+    chunker actually produce today. Right: what the same content looks like
+    once GROBID provides real section structure.
+  </p>
+
+  <div class="columns">
+    <div>
+      <div class="col-head">
+        <span class="col-tag bad">BEFORE</span>
+        <h2>pymupdf + naive token chunking</h2>
+      </div>
+
+      <div class="card mixed">
+        <div class="card-meta">
+          <span class="tag none">no section metadata</span>
+          <span class="tag">chunk_id: 2607.01852-1</span>
+        </div>
+        <div class="chunk-text">• We show issues regarding the evaluation using RAGAs
+on mid-range hardware.
+• We show how different chunking strategies perform
+within this system using the RAGAs.
+<span class="hl-related">II. RELATED WORK
+Qu et al. demonstrate that plain fixed-size chunking is
+the most cost-effective approach [2]. Their experiments were
+conducted on a mixture of datasets including both original and
+artificially combined documents, differing from the documents
+used in this work. [...] Late
+Chunking makes use of a long-context model to embed a
+full document [...] Reisinger et al. propose document-level knowledge
+graphs from the hierarchical structure of chunk embeddings to
+detect document versions and plagiarism [...]</span>
+<span class="hl-method">III. METHODOLOGY
+A. Chunking Strategies
+Chunking splits data into segments an LLM can process
+within its context window [...] Fixed-Sized Chunking: [...]
+Recursive Chunking: [...] combining the computational advantages of fixed-size chunk-
+ing with format-aware flexibility.</span>
+<span class="hl-artifact">arXiv:2607.01852v1  [cs.IR]  2 Jul 2026</span></div>
+        <div class="annotation">page-footer stamp leaked into the body text — pymupdf has no concept of "this line is a footer"</div>
+        <div class="verdict"><b>One chunk, two unrelated sections, one rendering artifact.</b> Its embedding vector represents an average of "related work citations" and "chunking method definitions" — neither topic gets a clean, focused vector.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-head">
+        <span class="col-tag good">AFTER</span>
+        <h2>GROBID structure-aware chunking</h2>
+      </div>
+
+      <div class="card clean">
+        <div class="card-meta">
+          <span class="tag section-a">section: Related Work</span>
+          <span class="tag">chunk_id: 2607.01852-rw-0</span>
+        </div>
+        <div class="chunk-text">Qu et al. demonstrate that plain fixed-size chunking is the most
+cost-effective approach [2]. Their experiments were conducted on
+a mixture of datasets including both original and artificially
+combined documents, differing from the documents used in this
+work. Their findings may not generalize to settings where
+documents are significantly larger and follow an internal
+structure. [...] Late Chunking makes use of a long-context
+model to embed a full document, then applies chunking and mean
+pooling to produce chunk vectors with better surrounding context
+than pipelines embedding after chunking [3].</div>
+        <div class="verdict"><b>Single topic: prior work only.</b> Nothing about chunking-method definitions bleeding in.</div>
+      </div>
+
+      <div class="card clean">
+        <div class="card-meta">
+          <span class="tag section-b">section: Methodology &gt; Chunking Strategies</span>
+          <span class="tag">chunk_id: 2607.01852-ms-0</span>
+        </div>
+        <div class="chunk-text">Chunking splits data into segments an LLM can process within
+its context window, and can be categorized in three main
+approaches: fixed-sized, format based, semantic chunking [4].
+
+Fixed-Sized Chunking: Fig. 1 a) depicts fixed-size chunking,
+which splits the corpus into uniform-length segments. Fixed
+boundaries ignore semantic structure, so an overlapping sliding
+window is used in practice to reduce fragmentation across
+chunks [2]. The chunk size was 150 words with an overlap of 15.
+
+Recursive Chunking: Fig. 1 b) displays a format based strategy
+that splits the corpus into larger segments, progressively
+subdividing those segments [...] combining the computational
+advantages of fixed-size chunking with format-aware flexibility.</div>
+        <div class="verdict"><b>Single topic: method definitions only.</b> No footer artifact — GROBID is trained to strip headers/footers/page numbers as non-body content.</div>
+      </div>
+    </div>
+  </div>
+
+  <table class="summary">
+    <tr><th>What changes</th><th>Before</th><th>After</th></tr>
+    <tr><td>Topics per chunk</td><td class="bad-cell">2 unrelated topics mixed into 1 chunk</td><td class="good-cell">1 focused topic per chunk</td></tr>
+    <tr><td>Section metadata</td><td class="bad-cell">none — Evidence only has paper_id/chunk_id</td><td class="good-cell">real section name attached to every chunk</td></tr>
+    <tr><td>PDF rendering noise</td><td class="bad-cell">page-footer text can leak into body paragraphs</td><td class="good-cell">headers/footers stripped before chunking ever runs</td></tr>
+    <tr><td>Chunk boundary</td><td class="bad-cell">pure token count — cuts wherever 650 tokens lands</td><td class="good-cell">respects section boundaries first, then token count within a section</td></tr>
+    <tr><td>Filtering by section</td><td class="bad-cell">not possible — no section field to filter on</td><td class="good-cell">possible — e.g. "only search the Results section"</td></tr>
+  </table>
+
+  <p class="source-note">
+    Both sides are real: the "before" text is <code>app/ingestion/parser.py</code> + <code>chunker.py</code>'s
+    actual chunk <code>2607.01852-1</code>, captured directly from a real run. The "after" text is pulled from
+    the real TEI-XML GROBID returned for the same PDF via <code>POST /api/processFulltextDocument</code> — not
+    a mockup of what GROBID <em>would</em> do.
+  </p>
+</div>
+</body>
+</html>
