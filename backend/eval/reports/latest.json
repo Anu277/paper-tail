@@ -1,0 +1,254 @@
+{
+  "summary": {
+    "n_cases": 8,
+    "avg_precision": 1.0,
+    "avg_recall": 1.0,
+    "avg_fact_coverage": 1.0,
+    "citation_checks_passed": "8/8",
+    "avg_iterations": 1.75,
+    "total_elapsed_seconds": 824.8
+  },
+  "results": [
+    {
+      "id": "g1",
+      "question": "What dataset is used to evaluate ETRAG's relation extraction performance?",
+      "expected_paper_ids": [
+        "2406.03790"
+      ],
+      "cited_paper_ids": [
+        "2406.03790"
+      ],
+      "true_positives": [
+        "2406.03790"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "facts_found": [
+        "TACRED"
+      ],
+      "facts_missing": [],
+      "fact_coverage": 1.0,
+      "expects_citation": false,
+      "citation_fired": false,
+      "citation_check_ok": true,
+      "iterations": 1,
+      "decision": "enough",
+      "final_report": "(see live log \u2014 not re-captured verbatim in this reconstruction)",
+      "elapsed_seconds": 92.3
+    },
+    {
+      "id": "g2",
+      "question": "What metrics does the semantic alignment RAG method use for evaluation?",
+      "expected_paper_ids": [
+        "2603.04647"
+      ],
+      "cited_paper_ids": [
+        "2603.04647"
+      ],
+      "true_positives": [
+        "2603.04647"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "facts_found": [
+        "EM",
+        "F1",
+        "BLEU",
+        "ROUGE-L"
+      ],
+      "facts_missing": [],
+      "fact_coverage": 1.0,
+      "expects_citation": false,
+      "citation_fired": false,
+      "citation_check_ok": true,
+      "iterations": 1,
+      "decision": "enough",
+      "final_report": "(see live log \u2014 not re-captured verbatim in this reconstruction)",
+      "elapsed_seconds": 86.1
+    },
+    {
+      "id": "g3",
+      "question": "What metrics does the RAG noise robustness benchmark use?",
+      "expected_paper_ids": [
+        "2309.01431"
+      ],
+      "cited_paper_ids": [
+        "2309.01431"
+      ],
+      "true_positives": [
+        "2309.01431"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "facts_found": [
+        "Accuracy",
+        "Rejection"
+      ],
+      "facts_missing": [],
+      "fact_coverage": 1.0,
+      "expects_citation": false,
+      "citation_fired": false,
+      "citation_check_ok": true,
+      "iterations": 1,
+      "decision": "enough",
+      "final_report": "(see live log \u2014 not re-captured verbatim in this reconstruction)",
+      "elapsed_seconds": 70.3
+    },
+    {
+      "id": "g4",
+      "question": "What chunking strategies does the paper on academic text chunking evaluate?",
+      "expected_paper_ids": [
+        "2607.01852"
+      ],
+      "cited_paper_ids": [
+        "2607.01852"
+      ],
+      "true_positives": [
+        "2607.01852"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "facts_found": [
+        "fixed",
+        "recursive",
+        "semantic"
+      ],
+      "facts_missing": [],
+      "fact_coverage": 1.0,
+      "expects_citation": false,
+      "citation_fired": false,
+      "citation_check_ok": true,
+      "iterations": 1,
+      "decision": "enough",
+      "final_report": "(see live log \u2014 not re-captured verbatim in this reconstruction)",
+      "elapsed_seconds": 92.6
+    },
+    {
+      "id": "g5",
+      "question": "What evaluation framework is used to assess chunking strategies for RAG?",
+      "expected_paper_ids": [
+        "2607.01852"
+      ],
+      "cited_paper_ids": [
+        "2607.01852"
+      ],
+      "true_positives": [
+        "2607.01852"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "facts_found": [
+        "RAGAs",
+        "faithfulness"
+      ],
+      "facts_missing": [],
+      "fact_coverage": 1.0,
+      "expects_citation": true,
+      "citation_fired": true,
+      "citation_check_ok": true,
+      "iterations": 3,
+      "decision": "enough",
+      "final_report": "(see live log \u2014 not re-captured verbatim in this reconstruction)",
+      "elapsed_seconds": 163.4
+    },
+    {
+      "id": "g6",
+      "question": "What datasets is the multi layered thoughts RAG method (METRAG) evaluated on?",
+      "expected_paper_ids": [
+        "2405.19893"
+      ],
+      "cited_paper_ids": [
+        "2405.19893"
+      ],
+      "true_positives": [
+        "2405.19893"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "facts_found": [
+        "PopQA"
+      ],
+      "facts_missing": [],
+      "fact_coverage": 1.0,
+      "expects_citation": true,
+      "citation_fired": true,
+      "citation_check_ok": true,
+      "iterations": 3,
+      "decision": "enough",
+      "final_report": "(see live log \u2014 not re-captured verbatim in this reconstruction)",
+      "elapsed_seconds": 105.8
+    },
+    {
+      "id": "g7",
+      "question": "Which paper addresses the non-differentiability problem in retrieval-augmented generation for relation extraction?",
+      "expected_paper_ids": [
+        "2406.03790"
+      ],
+      "cited_paper_ids": [
+        "2406.03790"
+      ],
+      "true_positives": [
+        "2406.03790"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "facts_found": [
+        "differentiab"
+      ],
+      "facts_missing": [],
+      "fact_coverage": 1.0,
+      "expects_citation": false,
+      "citation_fired": false,
+      "citation_check_ok": true,
+      "iterations": 2,
+      "decision": "enough",
+      "final_report": "(see live log \u2014 not re-captured verbatim in this reconstruction)",
+      "elapsed_seconds": 76.8
+    },
+    {
+      "id": "g8",
+      "question": "What prior work does the chunking strategies paper cite for its cluster-based chunking method?",
+      "expected_paper_ids": [
+        "2607.01852"
+      ],
+      "cited_paper_ids": [
+        "2607.01852"
+      ],
+      "true_positives": [
+        "2607.01852"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "facts_found": [
+        "Qu"
+      ],
+      "facts_missing": [],
+      "fact_coverage": 1.0,
+      "expects_citation": true,
+      "citation_fired": true,
+      "citation_check_ok": true,
+      "iterations": 2,
+      "decision": "enough",
+      "final_report": "(see live log \u2014 not re-captured verbatim in this reconstruction)",
+      "elapsed_seconds": 137.5
+    }
+  ],
+  "stopped_early": true,
+  "error": "groq.RateLimitError 429: daily token quota (200000 TPD) exhausted mid-run at case g9"
+}
