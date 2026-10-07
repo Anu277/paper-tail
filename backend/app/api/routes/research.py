@@ -46,7 +46,10 @@ def research(request: ResearchRequest) -> ResearchResponse:
     streaming to the frontend is a later design piece, not this endpoint.
     """
     graph = get_compiled_graph()
-    final_state = graph.invoke(_initial_state(request.question))
+    final_state = graph.invoke(
+        _initial_state(request.question),
+        config={"run_name": f"chat: {request.question[:60]}", "tags": ["chat"]},
+    )
     return ResearchResponse(
         question=request.question,
         final_report=final_state["final_report"],
@@ -98,7 +101,8 @@ def _stream_events(question: str):
     # deciding for, not the round it just kicked off.
     iteration = 1
     try:
-        for chunk in graph.stream(_initial_state(question), stream_mode="updates"):
+        stream_config = {"run_name": f"chat: {question[:60]}", "tags": ["chat", "stream"]}
+        for chunk in graph.stream(_initial_state(question), stream_mode="updates", config=stream_config):
             node_name, delta = next(iter(chunk.items()))
             kind = _NODE_KIND[node_name]
 

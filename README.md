@@ -32,6 +32,7 @@ diagrams, and `FRONTEND_UI_DESIGN.md` for the UI spec.
 | `GROQ_API_KEY` | **Yes** | [console.groq.com](https://console.groq.com) (free tier) | Every LLM call in the agent — planning, evaluating, deciding, writing answers |
 | `OPENALEX_EMAIL` | No, but recommended | your own email | Joins OpenAlex's "polite pool" for citation resolution, higher anonymous rate limit |
 | `OPENALEX_API_KEY` | No | [openalex.org](https://openalex.org) | Without it, citation resolution is capped at ~100 requests/day (a hard quota, not a retryable throttle) — a real key raises this to 10,000/day |
+| `LANGSMITH_API_KEY` | No | [smith.langchain.com](https://smith.langchain.com) (free tier) | Enables full tracing — see [Observability](#observability) below. Leaves everything unchanged if left blank |
 
 Nothing else needs a key — arXiv's API is free/keyless, and embeddings
 run locally (BAAI/bge-m3, downloaded once by Hugging Face on first use).
@@ -68,11 +69,14 @@ Create `backend/.env`:
 GROQ_API_KEY=your-key-here
 OPENALEX_EMAIL=your-email-here
 OPENALEX_API_KEY=your-key-here
+LANGSMITH_API_KEY=your-key-here
+LANGSMITH_PROJECT=paper-tail
 ```
 
 (`OPENALEX_EMAIL`/`OPENALEX_API_KEY` can be left blank to start — you'll
 just hit OpenAlex's low anonymous rate limit sooner when resolving
-citations for a large batch of papers.)
+citations for a large batch of papers. `LANGSMITH_API_KEY` can be left
+blank too — tracing just stays off, nothing else changes.)
 
 Run the backend:
 
@@ -119,6 +123,23 @@ without a backend running, but it's not talking to your real papers.
    verified its own claims.
 3. **Sidebar** — papers are grouped by the keyword search that found them.
    Click any paper to open its real PDF in the right-hand panel.
+
+## Observability
+
+Set `LANGSMITH_API_KEY` (see [API keys you need](#api-keys-you-need)) and
+every chat message and eval run gets traced to your LangSmith project
+automatically — no code changes, LangChain/LangGraph instrument
+themselves from the env var alone.
+
+What shows up: the full LangGraph execution as a trace tree (every node —
+intent, planner, retrieve, evaluate, decide, citation, verify, answer —
+including every loop iteration, in the order it actually ran), the exact
+prompt and completion for each LLM call with token counts, per-node
+latency, and project-wide aggregate token usage over time. Runs are
+tagged (`chat` for live requests, `eval` + the case ID for eval runs) so
+you can filter to, say, every historical run of one specific eval
+question. A failed run — like a rate-limit error — shows up as a real
+failed trace with the exact call that triggered it, not just a log line.
 
 ## Screenshots
 

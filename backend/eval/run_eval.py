@@ -11,7 +11,10 @@ import time
 from pathlib import Path
 
 from app.agent.graph import build_graph
+from app.observability import setup_langsmith
 from eval.golden_set import GOLDEN_SET
+
+setup_langsmith()
 
 REPORT_PATH = Path(__file__).parent / "reports" / "latest.json"
 
@@ -131,7 +134,10 @@ def main() -> None:
         print(f"[{i}/{len(GOLDEN_SET)}] {case['id']}: {case['question'][:70]!r}")
         start = time.monotonic()
         try:
-            final_state = graph.invoke(_initial_state(case["question"]))
+            final_state = graph.invoke(
+                _initial_state(case["question"]),
+                config={"run_name": f"eval: {case['id']}", "tags": ["eval", case["id"]]},
+            )
         except Exception as e:  # noqa: BLE001 — must save what's already completed before propagating
             elapsed = time.monotonic() - start
             print(f"  FAILED after {elapsed:.1f}s: {e}")

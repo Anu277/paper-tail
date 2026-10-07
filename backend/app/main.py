@@ -5,6 +5,9 @@ from groq import GroqError
 from app.api.routes.corpus import router as corpus_router
 from app.api.routes.research import router as research_router
 from app.llm.client import get_llm
+from app.observability import setup_langsmith
+
+setup_langsmith()
 
 app = FastAPI(title="Research Paper Agent")
 
